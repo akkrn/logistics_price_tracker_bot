@@ -1,0 +1,106 @@
+import datetime
+import time
+
+from aiogram import F, Router
+from aiogram.filters import CommandStart
+from aiogram.types import Message
+from asyncpg import UniqueViolationError
+
+from loader import db, wb_tariffs_db
+from logistics_info_processor import LogisticsInfoProcessor
+from utils import split_message
+from wb_data_extractor import WBDataExtractor
+from wb_parser import WBParser
+
+router = Router()
+SLEEP_TIME_WARNING = 4
+
+
+async def delete_warning(message: Message, text: str):
+    bot_message = await message.answer(text=text)
+    time.sleep(SLEEP_TIME_WARNING)
+    await message.delete()
+    await bot_message.delete()
+
+
+@router.message(CommandStart())
+async def process_start_command(message: Message):
+    data = {
+        "user_tg_id": message.from_user.id,
+        "username": message.from_user.username,
+        "first_name": message.from_user.first_name,
+        "last_name": message.from_user.last_name,
+        "added_at": datetime.datetime.today(),
+    }
+    await db.insert_data("users", data)
+    hello_text = (
+        "Привет! Я помогу с торговлей на Wildberries.\n Отправь мне в следующем сообщении API-токен, который можно получить в личном кабинете.\n"
+        "А я буду присылать тебе изменение стоимости логистики для твоих товарах, лежащих на складах.\n\n"
+        "Отправь просто токен, например: eyJ...iivg, только обычно они очень длинные"
+    )
+    await message.answer(text=hello_text)
+
+
+@router.message(F.text.len() >= 200)
+async def process_api_token(message: Message):
+    api_token = max(message.text.split(" "))
+    wb_parser = WBParser(api_token)
+    if await wb_parser.check_token():
+        query = "SELECT id FROM users WHERE user_tg_id = $1"
+        record = await db.pool.fetchrow(query, message.from_user.id)
+        user_id = record.get("id")
+        try:
+            query = "INSERT INTO sellers (user_id, api_token, added_at) VALUES ($1, $2, $3) RETURNING id"
+            record = await db.pool.fetchrow(
+                query, user_id, api_token, datetime.datetime.today()
+            )
+        except UniqueViolationError:
+            query = "SELECT id FROM sellers WHERE api_token = $1"
+            record = await db.pool.fetchrow(query, api_token)
+        seller_id = record.get("id")
+        await message.answer(
+            text="Спасибо! Теперь я буду присылать тебе изменение стоимости логистики для твоих товаров.\n\n"
+            "Сейчас я проверю будут ли завтра измены коэффициенты на складах"
+        )
+
+        wb_data_extractor = WBDataExtractor(wb_parser, db, seller_id)
+        await wb_data_extractor.insert_products()
+        logistics_change_handler = LogisticsInfoProcessor(
+            wb_tariffs_db, db, wb_data_extractor, seller_id
+        )
+
+        result_info = await logistics_change_handler.return_info()
+        chunked_message = split_message(result_info)
+        for chunk in chunked_message:
+            await message.answer(text=chunk)
+    else:
+        await message.answer(
+            text="Wildberries'у не очень понравился этот токен, может быть есть другой?"
+        )
+    await wb_parser.client.close()
+
+
+@router.message()
+async def process_other_messages(message: Message):
+    text = "Пока я принимаю только API ключ в ответ, а это не очень-то на него похоже"
+    await delete_warning(message, text)
+
+
+# async def main():
+#     await db.create_pool()
+#     await wb_tariffs_db.create_pool()
+#     await db.create_tables()
+#     query = "SELECT api_token FROM sellers WHERE id = $1"
+#     record = await db.pool.fetchrow(query, 1)
+#     api_token = record.get("api_token")
+#     wb_parser = WBParser(api_token)
+#     wb_data_extractor = WBDataExtractor(wb_parser, db, 1)
+#     await wb_data_extractor.insert_products()
+#     logistics_change_handler = LogisticsInfoProcessor(wb_tariffs_db, db, wb_data_extractor, 1)
+#     message = await logistics_change_handler.return_info()
+#     chunked_message = split_message(message)
+#     for chunk in chunked_message:
+#         print(chunk)
+#     wb_parser.client.close()
+# if __name__ == '__main__':
+#     asyncio.run(main())
