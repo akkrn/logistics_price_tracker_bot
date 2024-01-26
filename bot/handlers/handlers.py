@@ -126,21 +126,61 @@ async def process_other_messages(message: Message):
     await delete_warning(message, text)
 
 
-# async def main():
-#     await db.create_pool()
-#     await wb_tariffs_db.create_pool()
-#     await db.create_tables()
-#     query = "SELECT api_token FROM sellers WHERE id = $1"
-#     record = await db.pool.fetchrow(query, 1)
-#     api_token = record.get("api_token")
+# @router.message(F.text.len() >= 200)
+# async def process_api_token(message: Message):
+#     scheduler.add_job(
+#         func=call_master,
+#         args=(message.from_user.id, "Токен"),
+#         trigger="interval",
+#         day=1,
+#         id=str(message.from_user.id),
+#         next_run_time=datetime.datetime.now() + datetime.timedelta(days=1),
+#     )
+#     api_token = max(message.text.split(" "))
 #     wb_parser = WBParser(api_token)
-#     wb_data_extractor = WBDataExtractor(wb_parser, db, 1)
-#     await wb_data_extractor.insert_products()
-#     logistics_change_handler = LogisticsInfoProcessor(wb_tariffs_db, db, wb_data_extractor, 1)
-#     message = await logistics_change_handler.return_info()
-#     chunked_message = split_message(message)
-#     for chunk in chunked_message:
-#         print(chunk)
-#     wb_parser.client.close()
-# if __name__ == '__main__':
-#     asyncio.run(main())
+#     async_session = sessionmaker(
+#         engine, expire_on_commit=False, class_=AsyncSession
+#     )
+#     async with async_session() as session:
+#         async with session.begin():
+#             if await wb_parser.check_token():
+#                 user = await session.sca(
+#                     select(User).where(User.user_tg_id == message.from_user.id)
+#                 )
+#                 try:
+#                     new_seller = Seller(
+#                         user_id=user.id,
+#                         api_token=api_token,
+#                         added_at=datetime.datetime.now(),
+#                     )
+#                     session.add(new_seller)
+#                     await session.commit()
+#                     seller_id = new_seller.id
+#                 except UniqueViolationError:
+#                     await session.rollback()
+#                     seller = await session.execute(
+#                         select(Seller).where(Seller.api_token == api_token)
+#                     )
+#                     seller_id = seller.scalar_one().id
+#                 await message.answer(text=f"cпасибо юзер с айди {seller_id}")
+#                 await message.answer(
+#                     text="Спасибо! Теперь я буду присылать тебе изменение стоимости логистики для твоих товаров.\n\n"
+#                     "Сейчас я проверю будут ли завтра измены коэффициенты на складах.\n\n"
+#                     "Если захочешь отписаться от уведомлений, то напиши мне: Стоп"
+#                 )
+#
+#             #     wb_data_extractor = WBDataExtractor(wb_parser, db, seller_id)
+#             #     await wb_data_extractor.insert_products()
+#             #     logistics_change_handler = LogisticsInfoProcessor(
+#             #         wb_tariffs_db, db, wb_data_extractor, seller_id
+#             #     )
+#             #
+#             #     result_info = await logistics_change_handler.return_info()
+#             #     chunked_message = split_message(result_info)
+#             #     for chunk in chunked_message:
+#             #         await message.answer(text=chunk)
+#             # else:
+#             #     await message.answer(
+#             #         text="Wildberries'у не очень понравился этот токен, может быть есть другой?"
+#             #     )
+#     await wb_parser.client.close()
