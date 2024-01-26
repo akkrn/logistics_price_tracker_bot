@@ -24,7 +24,6 @@ async def main():
 
     logger.info("Starting bot")
     await db.create_pool()
-    await db.create_tables()
     await wb_tariffs_db.create_pool()
 
     logger.info("Database is created")
