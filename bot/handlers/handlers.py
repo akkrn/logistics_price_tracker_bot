@@ -78,7 +78,7 @@ async def process_start_command(message: Message):
                 await session.commit()
     hello_text = (
         "Привет! Я помогу с торговлей на Wildberries.\n Отправь мне в следующем сообщении API-токен, который можно получить в личном кабинете. "
-        "А я буду присылать тебе изменение стоимости логистики для твоих товарах, лежащих на складах.\n\n"
+        "А я буду присылать тебе изменение стоимости логистики для твоих товаров, лежащих на складах.\n\n"
         "Отправь просто токен, например: eyJ...iivg, только обычно они очень длинные"
     )
     await message.answer(text=hello_text)
@@ -110,7 +110,7 @@ async def process_api_token(message: Message):
         )
 
 
-@router.message(F.text.lover() == "стоп")
+@router.message(F.text.lower() == "стоп")
 async def process_remove_notifications(message: Message):
     scheduler.remove_job(str(message.from_user.id))
     await message.answer(
