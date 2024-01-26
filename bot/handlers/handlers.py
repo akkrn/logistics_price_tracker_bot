@@ -86,6 +86,10 @@ async def process_start_command(message: Message):
     )
     await message.answer(text=hello_text)
 
+            text="Спасибо! Теперь я буду присылать тебе изменение стоимости логистики для твоих товаров.\n\n"
+            "Сейчас я проверю, будут ли завтра измены коэффициенты на складах.\n\n"
+            "Если захочешь отписаться от уведомлений, то напиши мне: Стоп"
+        )
         scheduler.add_job(
             func=return_info,
             args=(message.from_user.id, api_token),
@@ -98,7 +102,16 @@ async def process_start_command(message: Message):
         await message.answer(
             text="Wildberries'у не очень понравился этот токен, может быть есть другой?"
         )
-    await wb_parser.client.close()
+
+
+@router.message(F.text.lover() == "стоп")
+async def process_remove_notifications(message: Message):
+    scheduler.remove_job(str(message.from_user.id))
+    await message.answer(
+        text="Окей, я больше не буду присылать тебе уведомления\n\n "
+        "Если захочешь снова получать информацию об изменении логистики, "
+        "то отправь мне токен заново"
+    )
 
 
 @router.message()
