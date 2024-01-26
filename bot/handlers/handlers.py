@@ -8,9 +8,14 @@ from asyncpg import UniqueViolationError
 
 from loader import db, wb_tariffs_db
 from logistics_info_processor import LogisticsInfoProcessor
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
 from utils import split_message
 from wb_data_extractor import WBDataExtractor
 from wb_parser import WBParser
+from loader import engine
+from models import User, Seller
 
 router = Router()
 SLEEP_TIME_WARNING = 4
@@ -23,27 +28,7 @@ async def delete_warning(message: Message, text: str):
     await bot_message.delete()
 
 
-@router.message(CommandStart())
-async def process_start_command(message: Message):
-    data = {
-        "user_tg_id": message.from_user.id,
-        "username": message.from_user.username,
-        "first_name": message.from_user.first_name,
-        "last_name": message.from_user.last_name,
-        "added_at": datetime.datetime.today(),
-    }
-    await db.insert_data("users", data)
-    hello_text = (
-        "Привет! Я помогу с торговлей на Wildberries.\n Отправь мне в следующем сообщении API-токен, который можно получить в личном кабинете.\n"
-        "А я буду присылать тебе изменение стоимости логистики для твоих товарах, лежащих на складах.\n\n"
-        "Отправь просто токен, например: eyJ...iivg, только обычно они очень длинные"
-    )
-    await message.answer(text=hello_text)
-
-
-@router.message(F.text.len() >= 200)
-async def process_api_token(message: Message):
-    api_token = max(message.text.split(" "))
+async def return_info(user_tg_id: int, api_token: str):
     wb_parser = WBParser(api_token)
     if await wb_parser.check_token():
         query = "SELECT id FROM users WHERE user_tg_id = $1"
@@ -73,6 +58,34 @@ async def process_api_token(message: Message):
         chunked_message = split_message(result_info)
         for chunk in chunked_message:
             await message.answer(text=chunk)
+@router.message(CommandStart())
+async def process_start_command(message: Message):
+    async_session = sessionmaker(
+        engine, expire_on_commit=False, class_=AsyncSession
+    )
+    async with async_session() as session:
+        async with session.begin():
+            result = await session.execute(
+                select(User).where(User.user_tg_id == message.from_user.id)
+            )
+            user = result.scalar_one_or_none()
+            if user is None:
+                new_user = User(
+                    user_tg_id=message.from_user.id,
+                    username=message.from_user.username,
+                    first_name=message.from_user.first_name,
+                    last_name=message.from_user.last_name,
+                    added_at=datetime.datetime.now(),
+                )
+                session.add(new_user)
+                await session.commit()
+    hello_text = (
+        "Привет! Я помогу с торговлей на Wildberries.\n Отправь мне в следующем сообщении API-токен, который можно получить в личном кабинете. "
+        "А я буду присылать тебе изменение стоимости логистики для твоих товарах, лежащих на складах.\n\n"
+        "Отправь просто токен, например: eyJ...iivg, только обычно они очень длинные"
+    )
+    await message.answer(text=hello_text)
+
     else:
         await message.answer(
             text="Wildberries'у не очень понравился этот токен, может быть есть другой?"
