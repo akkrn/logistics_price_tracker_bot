@@ -22,6 +22,7 @@ class Database:
             host=self.host,
             port=self.port,
         )
+
     async def insert_data(
         self,
         table_name,
