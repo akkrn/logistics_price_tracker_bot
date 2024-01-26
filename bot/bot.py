@@ -1,10 +1,11 @@
 import asyncio
 import logging
+import sentry_sdk
 
 from aiogram import Dispatcher
 
 from handlers import handlers
-from loader import bot, dp, wb_tariffs_db, scheduler, db
+from loader import bot, dp, wb_tariffs_db, scheduler, db, sentry_url
 
 logger = logging.getLogger(__name__)
 
@@ -36,4 +37,5 @@ async def main():
 
 
 if __name__ == "__main__":
+    sentry_sdk.init(sentry_url)
     asyncio.run(main())

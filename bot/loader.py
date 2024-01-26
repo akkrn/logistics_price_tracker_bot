@@ -9,6 +9,7 @@ from database import Database
 
 config = load_config(path=None)
 bot = Bot(token=config.tg_bot.token, parse_mode="Markdown")
+sentry_url = config.sentry_url.url
 db = Database(
     name=config.db.postgres_db,
     user=config.db.postgres_user,
@@ -34,6 +35,5 @@ executors = {
     "default": AsyncIOExecutor(),
 }
 scheduler = AsyncIOScheduler(jobstores=jobstores, executors=executors)
-
 
 dp = Dispatcher()

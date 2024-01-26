@@ -16,12 +16,17 @@ class DatabaseConfig:
 class TgBot:
     token: str
 
+@dataclass
+class Sentry:
+    url: str
+
 
 @dataclass
 class Config:
     tg_bot: TgBot
     db: DatabaseConfig
     wb_tariffs_db: DatabaseConfig
+    sentry_url: Sentry
 
 
 def load_config(path: str | None) -> Config:
@@ -44,4 +49,5 @@ def load_config(path: str | None) -> Config:
             postgres_password=env("POSTGRES_PASSWORD_2"),
             db_port=env.int("DB_PORT_2"),
         ),
+        sentry_url=Sentry(url=env("SENTRY_URL")),
     )
