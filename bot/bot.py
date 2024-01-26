@@ -4,7 +4,7 @@ import logging
 from aiogram import Dispatcher
 
 from handlers import handlers
-from loader import bot, db, dp, wb_tariffs_db
+from loader import bot, dp, wb_tariffs_db, scheduler, db
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,8 @@ async def main():
 
     logger.info("Database is created")
     dp.include_router(handlers.router)
+
+    scheduler.start()
 
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot, on_shutdown=shutdown)
