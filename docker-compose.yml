@@ -9,14 +9,22 @@ services:
     env_file: .env
     volumes:
       - pg_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: passwordhere
+      POSTGRES_DB: tg_bot_db
+    container_name: database
 #  redis:
 #    image: redis:7-alpine
 #    ports:
 #      - "6379:6379"
 #    volumes:
 #      - redis_data:/var/lib/redis/data
-  backend:
-    build: .
-    env_file: .env
+  bot:
+    build:
+      context: .
+    command: bash -c "alembic upgrade head && python bot/bot.py"
+    restart: always
+    env_file:
+      - ".env"
     depends_on:
       - db

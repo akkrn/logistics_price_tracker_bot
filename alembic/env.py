@@ -21,8 +21,8 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from bot.models import Base
-from bot.loader import database_url
+from models import Base
+from loader import database_url
 
 target_metadata = Base.metadata
 
