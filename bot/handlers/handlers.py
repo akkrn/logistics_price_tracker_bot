@@ -112,12 +112,15 @@ async def process_api_token(message: Message):
 
 @router.message(F.text.lower() == "стоп")
 async def process_remove_notifications(message: Message):
-    scheduler.remove_job(str(message.from_user.id))
-    await message.answer(
+    try:
+        scheduler.remove_job(str(message.from_user.id))
+    finally:
+        await message.answer(
         text="Окей, я больше не буду присылать тебе уведомления\n\n "
         "Если захочешь снова получать информацию об изменении логистики, "
         "то отправь мне токен заново"
-    )
+        )
+
 
 
 @router.message()
