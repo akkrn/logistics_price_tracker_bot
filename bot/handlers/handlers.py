@@ -90,10 +90,9 @@ async def process_start_command(message: Message):
             func=return_info,
             args=(message.from_user.id, api_token),
             trigger="interval",
-            minutes=1,  # FIXME day=1
+            days=1,
             id=str(message.from_user.id),
-            next_run_time=datetime.datetime.now()
-            + datetime.timedelta(minutes=1),  # FIXME day=1
+            next_run_time=datetime.datetime.now() + datetime.timedelta(days=1),
         )
     else:
         await message.answer(
