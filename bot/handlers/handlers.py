@@ -30,34 +30,31 @@ async def delete_warning(message: Message, text: str):
 
 async def return_info(user_tg_id: int, api_token: str):
     wb_parser = WBParser(api_token)
-    if await wb_parser.check_token():
-        query = "SELECT id FROM users WHERE user_tg_id = $1"
-        record = await db.pool.fetchrow(query, message.from_user.id)
-        user_id = record.get("id")
-        try:
-            query = "INSERT INTO sellers (user_id, api_token, added_at) VALUES ($1, $2, $3) RETURNING id"
-            record = await db.pool.fetchrow(
-                query, user_id, api_token, datetime.datetime.today()
-            )
-        except UniqueViolationError:
-            query = "SELECT id FROM sellers WHERE api_token = $1"
-            record = await db.pool.fetchrow(query, api_token)
-        seller_id = record.get("id")
-        await message.answer(
-            text="Спасибо! Теперь я буду присылать тебе изменение стоимости логистики для твоих товаров.\n\n"
-            "Сейчас я проверю будут ли завтра измены коэффициенты на складах"
+    query = "SELECT id FROM users WHERE user_tg_id = $1"
+    record = await db.pool.fetchrow(query, user_tg_id)
+    user_id = record.get("id")
+    try:
+        query = "INSERT INTO sellers (user_id, api_token, added_at) VALUES ($1, $2, $3) RETURNING id"
+        record = await db.pool.fetchrow(
+            query, user_id, api_token, datetime.datetime.today()
         )
-
-        wb_data_extractor = WBDataExtractor(wb_parser, db, seller_id)
-        await wb_data_extractor.insert_products()
-        logistics_change_handler = LogisticsInfoProcessor(
-            wb_tariffs_db, db, wb_data_extractor, seller_id
-        )
-
-        result_info = await logistics_change_handler.return_info()
+    except UniqueViolationError:
+        query = "SELECT id FROM sellers WHERE api_token = $1"
+        record = await db.pool.fetchrow(query, api_token)
+    seller_id = record.get("id")
+    wb_data_extractor = WBDataExtractor(wb_parser, db, seller_id)
+    await wb_data_extractor.insert_products()
+    logistics_change_handler = LogisticsInfoProcessor(
+        wb_tariffs_db, db, wb_data_extractor, seller_id
+    )
+    result_info = await logistics_change_handler.return_info()
+    if result_info:
         chunked_message = split_message(result_info)
         for chunk in chunked_message:
-            await message.answer(text=chunk)
+            await bot.send_message(user_tg_id, chunk)
+    await wb_parser.client.close()
+
+
 @router.message(CommandStart())
 async def process_start_command(message: Message):
     async_session = sessionmaker(
@@ -86,10 +83,19 @@ async def process_start_command(message: Message):
     )
     await message.answer(text=hello_text)
 
+
+@router.message(F.text.len() >= 200)
+async def process_api_token(message: Message):
+    api_token = max(message.text.split(" "))
+    wb_parser = WBParser(api_token)
+    if await wb_parser.check_token():
+        await wb_parser.client.close()
+        await message.answer(
             text="Спасибо! Теперь я буду присылать тебе изменение стоимости логистики для твоих товаров.\n\n"
             "Сейчас я проверю, будут ли завтра измены коэффициенты на складах.\n\n"
             "Если захочешь отписаться от уведомлений, то напиши мне: Стоп"
         )
+        await return_info(message.from_user.id, api_token)
         scheduler.add_job(
             func=return_info,
             args=(message.from_user.id, api_token),
