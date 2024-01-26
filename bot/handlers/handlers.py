@@ -6,7 +6,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 from asyncpg import UniqueViolationError
 
-from loader import db, wb_tariffs_db
+from loader import wb_tariffs_db, scheduler, bot, db
 from logistics_info_processor import LogisticsInfoProcessor
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -86,6 +86,15 @@ async def process_start_command(message: Message):
     )
     await message.answer(text=hello_text)
 
+        scheduler.add_job(
+            func=return_info,
+            args=(message.from_user.id, api_token),
+            trigger="interval",
+            minutes=1,  # FIXME day=1
+            id=str(message.from_user.id),
+            next_run_time=datetime.datetime.now()
+            + datetime.timedelta(minutes=1),  # FIXME day=1
+        )
     else:
         await message.answer(
             text="Wildberries'у не очень понравился этот токен, может быть есть другой?"
