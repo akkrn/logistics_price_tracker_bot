@@ -22,9 +22,18 @@ wb_tariffs_db = Database(
     password=config.wb_tariffs_db.postgres_password,
     host=config.wb_tariffs_db.db_host,
     port=config.wb_tariffs_db.db_port,
+)
 database_url = f"postgresql+asyncpg://{db.user}:{db.password}@{db.host}:{db.port}/{db.name}"
 engine = create_async_engine(database_url)
+
+jobstores_url = (
+    f"postgresql://{db.user}:{db.password}@{db.host}:{db.port}/{db.name}"
 )
-dp = Dispatcher(
-    # storage=storage
-)
+jobstores = {"default": SQLAlchemyJobStore(url=jobstores_url)}
+executors = {
+    "default": AsyncIOExecutor(),
+}
+scheduler = AsyncIOScheduler(jobstores=jobstores, executors=executors)
+
+
+dp = Dispatcher()
