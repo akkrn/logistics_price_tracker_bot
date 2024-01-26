@@ -1,5 +1,5 @@
 import datetime
-from typing import  Any
+from typing import Any
 
 from bot import logger
 from database import Database
@@ -29,7 +29,7 @@ class LogisticsInfoProcessor:
         stocks_data = await self._data_extractor.extract_warehouses_stocks()
         stocks_list = []
         try:
-            await self._db.insert_data("warehouses_stocks", stocks_data)
+            await self._db.insert_data("stocks", stocks_data)
         except Exception:
             logger.error("Не получилось записать данные в бд", exc_info=True)
         for stock in stocks_data:
