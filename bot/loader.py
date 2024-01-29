@@ -2,7 +2,8 @@ from aiogram import Bot, Dispatcher
 from apscheduler.executors.asyncio import AsyncIOExecutor
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 
 from config_data.config import load_config
 from database import Database
@@ -25,7 +26,10 @@ wb_tariffs_db = Database(
     port=config.wb_tariffs_db.db_port,
 )
 database_url = f"postgresql+asyncpg://{db.user}:{db.password}@{db.host}:{db.port}/{db.name}"
-engine = create_async_engine(database_url)
+engine = create_async_engine(database_url, echo=False)
+async_session = sessionmaker(
+    engine, expire_on_commit=False, class_=AsyncSession
+)
 
 jobstores_url = (
     f"postgresql://{db.user}:{db.password}@{db.host}:{db.port}/{db.name}"
