@@ -3,7 +3,8 @@ import time
 
 from aiogram import F, Router
 from aiogram.filters import CommandStart
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
+from apscheduler.triggers.cron import CronTrigger
 from asyncpg import UniqueViolationError
 
 from loader import wb_tariffs_db, scheduler, bot, db, async_session
@@ -57,9 +58,6 @@ async def return_info(user_tg_id: int, api_token: str):
 
 @router.message(CommandStart())
 async def process_start_command(message: Message):
-    async_session = sessionmaker(
-        engine, expire_on_commit=False, class_=AsyncSession
-    )
     async with async_session() as session:
         async with session.begin():
             result = await session.execute(
