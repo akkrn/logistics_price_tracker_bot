@@ -6,6 +6,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery
 from apscheduler.triggers.cron import CronTrigger
 from asyncpg import UniqueViolationError
+from jwt import DecodeError
 
 from loader import wb_tariffs_db, scheduler, bot, db, async_session
 from logistics_info_processor import LogisticsInfoProcessor
@@ -17,6 +18,8 @@ from wb_data_extractor import WBDataExtractor
 from wb_parser import WBParser
 from loader import engine
 from models import User, Seller
+from wb_token import WildberriesToken
+
 
 router = Router()
 SLEEP_TIME_WARNING = 4
@@ -106,6 +109,9 @@ async def process_api_token(message: Message):
         await message.answer(
             text="Wildberries'у не очень понравился этот токен, может быть есть другой?"
         )
+    try:
+        wb_token_check = WildberriesToken(api_token)
+        if not wb_token_check.is_expired():
 
 
 @router.message(F.text.lower() == "стоп")
