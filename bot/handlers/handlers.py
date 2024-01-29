@@ -6,7 +6,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 from asyncpg import UniqueViolationError
 
-from loader import wb_tariffs_db, scheduler, bot, db
+from loader import wb_tariffs_db, scheduler, bot, db, async_session
 from logistics_info_processor import LogisticsInfoProcessor
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
