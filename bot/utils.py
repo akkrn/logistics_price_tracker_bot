@@ -1,6 +1,10 @@
 import datetime
 import logging
 
+from datetime import datetime
+
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 def str_to_date(value: str) -> datetime.date | None:
     if isinstance(value, str):
@@ -50,3 +54,26 @@ def split_message(message, max_length=4096):
         chunks.append(current_chunk)
 
     return chunks
+
+
+def create_inline_kb(
+    width: int, *args: str, **kwargs: str
+) -> InlineKeyboardMarkup:
+    kb_builder: InlineKeyboardBuilder = InlineKeyboardBuilder()
+    buttons: list[InlineKeyboardButton] = []
+    if args:
+        for button in args:
+            buttons.append(
+                InlineKeyboardButton(
+                    text=button,
+                    callback_data=button,
+                )
+            )
+    if kwargs:
+        for button, text in kwargs.items():
+            buttons.append(
+                InlineKeyboardButton(text=text, callback_data=button)
+            )
+
+    kb_builder.row(*buttons, width=width)
+    return kb_builder.as_markup()
