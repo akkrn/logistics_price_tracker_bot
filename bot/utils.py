@@ -6,7 +6,8 @@ from datetime import datetime
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-def str_to_date(value: str) -> datetime.date | None:
+
+def str_to_date(value: str) -> datetime.date:
     if isinstance(value, str):
         date_formats = [
             "%Y-%m-%dT%H:%M:%S",
