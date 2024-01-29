@@ -26,7 +26,7 @@ wb_tariffs_db = Database(
     port=config.wb_tariffs_db.db_port,
 )
 database_url = f"postgresql+asyncpg://{db.user}:{db.password}@{db.host}:{db.port}/{db.name}"
-engine = create_async_engine(database_url, echo=True)
+engine = create_async_engine(database_url, echo=False)
 async_session = sessionmaker(
     engine, expire_on_commit=False, class_=AsyncSession
 )
