@@ -62,9 +62,13 @@ async def return_info(seller_id: int, api_token: str):
     if result_info:
         async with async_session() as session:
             async with session.begin():
-                user_tg_id = await session.execute(
-                    select(User.user_tg_id).where(User.id == seller_id)
+                result = await session.execute(
+                    select(User)
+                    .options(joinedload(User.sellers))
+                    .where(Seller.id == seller_id)
                 )
+                user_tg_id = result.scalars().first().user_tg_id
+                print(user_tg_id)
         chunked_message = split_message(result_info)
         for chunk in chunked_message:
             await bot.send_message(user_tg_id, chunk)
