@@ -16,7 +16,7 @@ def str_to_date(value: str) -> datetime.date:
         ]
         for date_format in date_formats:
             try:
-                return datetime.datetime.strptime(value, date_format)
+                return datetime.strptime(value, date_format)
             except ValueError:
                 continue
         logging.error(f"Failed to convert '{value}' to date")
