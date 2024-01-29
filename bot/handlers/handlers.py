@@ -177,15 +177,56 @@ async def process_time(callback: CallbackQuery):
 
 @router.message(F.text.lower() == "стоп")
 async def process_remove_notifications(message: Message):
-    try:
-        scheduler.remove_job(str(message.from_user.id))
-    finally:
-        await message.answer(
-        text="Окей, я больше не буду присылать тебе уведомления\n\n "
-        "Если захочешь снова получать информацию об изменении логистики, "
-        "то отправь мне токен заново"
-        )
+    async with async_session() as session:
+        async with session.begin():
+            stmt = (
+                select(Seller)
+                .options(joinedload(Seller.user))
+                .where(User.user_tg_id == message.from_user.id)
+            )
+            result = await session.execute(stmt)
+            sellers = result.scalars()
 
+            query = "SELECT id FROM apscheduler_jobs"
+            result = await session.execute(text(query))
+            jobs_id = result.scalars().all()
+            sellers_dict = {}
+            for seller in sellers:
+                if str(seller.id) in jobs_id:
+                    sellers_dict[str(seller.id)] = datetime.datetime.strftime(
+                        seller.added_at, "%d.%m.%Y %H:%M"
+                    )
+            if len(sellers_dict) > 1:
+                token_keyboard = create_inline_kb(2, **sellers_dict)
+                await message.answer(
+                    text=(
+                        "У тебя несколько токенов, выбери тот, у которого ты хочешь остановить уведомления. "
+                        "Указаны даты добавления токенов"
+                    ),
+                    reply_markup=token_keyboard,
+                )
+            elif len(sellers_dict) == 1:
+                try:
+                    scheduler.remove_job(*sellers_dict)
+                finally:
+                    await message.answer(
+                        text="Окей, я больше не буду присылать тебе уведомления\n\n "
+                        "Если захочешь снова получать информацию об изменении логистики, "
+                        "то отправь мне токен заново"
+                    )
+
+
+@router.callback_query()
+async def process_remove_notifications(callback: CallbackQuery):
+    seller_id = callback.data
+    try:
+        scheduler.remove_job(str(seller_id))
+    finally:
+        await callback.message.edit_text(
+            text="Окей, я больше не буду присылать тебе уведомления\n\n "
+            "Если захочешь снова получать информацию об изменении логистики, "
+            "то отправь мне токен заново"
+        )
 
 
 @router.message()
