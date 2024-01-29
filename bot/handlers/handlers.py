@@ -175,6 +175,7 @@ async def process_time(callback: CallbackQuery):
                     timezone=moscow_timezone,
                 ),
                 id=str(seller.id),
+                next_run_time=notification_time,
             )
 
 
