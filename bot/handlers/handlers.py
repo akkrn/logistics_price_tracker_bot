@@ -4,6 +4,7 @@ import time
 from aiogram import F, Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery
+from apscheduler.jobstores.base import ConflictingIdError
 from apscheduler.triggers.cron import CronTrigger
 from asyncpg import UniqueViolationError
 from jwt import DecodeError
@@ -166,7 +167,8 @@ async def process_time(callback: CallbackQuery):
             result = await session.execute(stmt)
             seller = result.scalars().first()
             await return_info(seller.id, seller.api_token)
-            scheduler.add_job(
+            try:
+                scheduler.add_job(
                 func=return_info,
                 args=(seller.id, seller.api_token),
                 trigger=CronTrigger(
@@ -176,7 +178,17 @@ async def process_time(callback: CallbackQuery):
                 ),
                 id=str(seller.id),
                 next_run_time=notification_time,
-            )
+                )
+            except ConflictingIdError:
+                scheduler.reschedule_job(
+                    str(seller.id),
+                    trigger=CronTrigger(
+                        hour=selected_time.hour,
+                        minute=selected_time.minute,
+                        timezone=moscow_timezone,
+                    ),
+                next_run_time=notification_time,
+                )
 
 
 @router.message(F.text.lower() == "стоп")
