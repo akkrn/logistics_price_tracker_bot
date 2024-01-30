@@ -218,6 +218,10 @@ async def process_remove_notifications(message: Message):
                         "Если захочешь снова получать информацию об изменении логистики, "
                         "то отправь мне токен заново"
                     )
+            else:
+                await message.answer(
+                    text="У тебя пока нет добавленных токенов, поэтому я не могу присылать тебе уведомления"
+                )
 
 
 @router.callback_query()
