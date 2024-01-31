@@ -78,9 +78,6 @@ class WBDataExtractor:
                 None,
             )
             if not product_id:
-                logger.error(
-                    f"Товар с nm_id == {stock.get('nmId')} не найден в базе данных."
-                )
                 continue
             stock_data = {
                 "seller_id": self._seller_id,
