@@ -11,15 +11,14 @@ from jwt import DecodeError
 
 from loader import wb_tariffs_db, scheduler, bot, db, async_session
 from logistics_info_processor import LogisticsInfoProcessor
-from sqlalchemy import select, text
+from sqlalchemy import select, text, func
+from sqlalchemy.dialects.postgresql import insert
 from utils import split_message
 from wb_data_extractor import WBDataExtractor
 from wb_parser import WBParser
-from loader import engine
 from models import User, Seller
 from wb_token import WildberriesToken
 
-from models import user
 from utils import create_inline_kb
 
 router = Router()
@@ -107,24 +106,20 @@ async def process_api_token(message: Message):
     try:
         wb_token_check = WildberriesToken(api_token)
         if not wb_token_check.is_expired():
-            async with (async_session() as session):
-                async with session.begin():
-                    user = await session.execute(
-                        select(User).where(
-                            User.user_tg_id == message.from_user.id
-                        )
+            async with async_session() as session:
+                user = await session.execute(
+                    select(User).where(
+                        User.user_tg_id == message.from_user.id
                     )
-                    user = user.scalar_one()
-                    try:
-                        new_seller = Seller(
-                            user_id=user.id,
-                            api_token=api_token,
-                            added_at=datetime.datetime.now(),
-                        )
-                        session.add(new_seller)
-                        await session.commit()
-                    except Exception:
-                        await session.rollback()
+                )
+                user = user.scalar_one()
+                stmt = insert(Seller).values(
+                    user_id=user.id,
+                    api_token=api_token,
+                    added_at=datetime.datetime.now(),
+                ).on_conflict_do_update(constraint="user_token_key", set_={"updated_at": datetime.datetime.now()})
+                await session.execute(stmt)
+                await session.commit()
             time_keyboard = create_inline_kb(4, *TIME_LIST)
             await message.answer(
                 text="Выбери время, в которое ты хочешь получать уведомления. Время указано по московскому часовому поясу.",
@@ -186,6 +181,37 @@ async def process_time(callback: CallbackQuery):
                     ),
                 next_run_time=notification_time,
                 )
+    async with async_session() as session:
+        stmt = (
+            select(Seller)
+            .join(Seller.user)
+            .where(User.user_tg_id == callback.from_user.id)
+        )
+        result = await session.execute(stmt)
+        seller = result.scalars().first()
+        await return_info(seller.id, seller.api_token)
+        try:
+            scheduler.add_job(
+            func=return_info,
+            args=(seller.id, seller.api_token),
+            trigger=CronTrigger(
+                hour=selected_time.hour,
+                minute=selected_time.minute,
+                timezone=moscow_timezone,
+            ),
+            id=str(seller.id),
+            next_run_time=notification_time,
+            )
+        except ConflictingIdError:
+            scheduler.reschedule_job(
+                str(seller.id),
+                trigger=CronTrigger(
+                    hour=selected_time.hour,
+                    minute=selected_time.minute,
+                    timezone=moscow_timezone,
+                ),
+            next_run_time=notification_time,
+            )
 
 
 @router.message(F.text.lower() == "стоп")
