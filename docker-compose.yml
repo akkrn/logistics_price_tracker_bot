@@ -9,8 +9,8 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
     environment:
-      POSTGRES_PASSWORD: passwordhere
-      POSTGRES_DB: tg_bot_db
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_1}
+      POSTGRES_DB: ${POSTGRES_PASSWORD_1}
     container_name: database
   bot:
     build:
@@ -19,7 +19,6 @@ services:
       - .:/app
     command: bash -c "alembic upgrade head && python bot/bot.py"
     restart: always
-    env_file:
-      - ".env"
+    env_file: .env
     depends_on:
       - db
