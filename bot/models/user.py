@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_tg_id: Mapped[int] = mapped_column(BigInteger, unique=True)
-    username: Mapped[str | None] = mapped_column(unique=True)
+    username: Mapped[str | None]
     first_name: Mapped[str | None]
     last_name: Mapped[str | None]
     added_at: Mapped[datetime.datetime | None] = mapped_column(TIMESTAMP)
