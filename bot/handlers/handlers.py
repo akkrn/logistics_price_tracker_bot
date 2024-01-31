@@ -61,13 +61,12 @@ async def return_info(seller_id: int, api_token: str):
     result_info = await logistics_change_handler.return_info()
     if result_info:
         async with async_session() as session:
-            async with session.begin():
-                result = await session.execute(
-                    select(User)
-                    .join(User.sellers)
-                    .where(Seller.id == seller_id)
-                )
-                user_tg_id = result.scalars().first().user_tg_id
+            result = await session.execute(
+                select(User)
+                .join(User.sellers)
+                .where(Seller.id == seller_id)
+            )
+            user_tg_id = result.scalars().first().user_tg_id
         chunked_message = split_message(result_info)
         for chunk in chunked_message:
             await bot.send_message(user_tg_id, chunk)
@@ -77,21 +76,20 @@ async def return_info(seller_id: int, api_token: str):
 @router.message(CommandStart())
 async def process_start_command(message: Message):
     async with async_session() as session:
-        async with session.begin():
-            result = await session.execute(
-                select(User).where(User.user_tg_id == message.from_user.id)
+        result = await session.execute(
+            select(User).where(User.user_tg_id == message.from_user.id)
+        )
+        user = result.scalar_one_or_none()
+        if user is None:
+            new_user = User(
+                user_tg_id=message.from_user.id,
+                username=message.from_user.username,
+                first_name=message.from_user.first_name,
+                last_name=message.from_user.last_name,
+                added_at=datetime.datetime.now(),
             )
-            user = result.scalar_one_or_none()
-            if user is None:
-                new_user = User(
-                    user_tg_id=message.from_user.id,
-                    username=message.from_user.username,
-                    first_name=message.from_user.first_name,
-                    last_name=message.from_user.last_name,
-                    added_at=datetime.datetime.now(),
-                )
-                session.add(new_user)
-                await session.commit()
+            session.add(new_user)
+            await session.commit()
     hello_text = (
         "Привет! Я помогу с торговлей на Wildberries.\n Отправь мне в следующем сообщении API-токен, который можно получить в личном кабинете. "
         "А я буду присылать тебе изменение стоимости логистики для твоих товаров, лежащих на складах.\n\n"
@@ -193,46 +191,44 @@ async def process_time(callback: CallbackQuery):
 @router.message(F.text.lower() == "стоп")
 async def process_remove_notifications(message: Message):
     async with async_session() as session:
-        async with session.begin():
-            stmt = (
-                select(Seller)
-                .join(Seller.user)
-                .where(User.user_tg_id == message.from_user.id)
+        stmt = (
+            select(Seller)
+            .join(Seller.user)
+            .where(User.user_tg_id == message.from_user.id)
+        )
+        result = await session.execute(stmt)
+        sellers = result.scalars()
+        query = "SELECT id FROM apscheduler_jobs"
+        result = await session.execute(text(query))
+        jobs_id = result.scalars().all()
+        sellers_dict = {}
+        for seller in sellers:
+            if str(seller.id) in jobs_id:
+                sellers_dict[str(seller.id)] = datetime.datetime.strftime(
+                    seller.added_at, "%d.%m.%Y %H:%M"
+                )
+        if len(sellers_dict) > 1:
+            token_keyboard = create_inline_kb(2, **sellers_dict)
+            await message.answer(
+                text=(
+                    "У тебя несколько токенов, выбери тот, у которого ты хочешь остановить уведомления. "
+                    "Указаны даты добавления токенов"
+                ),
+                reply_markup=token_keyboard,
             )
-            result = await session.execute(stmt)
-            sellers = result.scalars()
-
-            query = "SELECT id FROM apscheduler_jobs"
-            result = await session.execute(text(query))
-            jobs_id = result.scalars().all()
-            sellers_dict = {}
-            for seller in sellers:
-                if str(seller.id) in jobs_id:
-                    sellers_dict[str(seller.id)] = datetime.datetime.strftime(
-                        seller.added_at, "%d.%m.%Y %H:%M"
-                    )
-            if len(sellers_dict) > 1:
-                token_keyboard = create_inline_kb(2, **sellers_dict)
+        elif len(sellers_dict) == 1:
+            try:
+                scheduler.remove_job(*sellers_dict)
+            finally:
                 await message.answer(
-                    text=(
-                        "У тебя несколько токенов, выбери тот, у которого ты хочешь остановить уведомления. "
-                        "Указаны даты добавления токенов"
-                    ),
-                    reply_markup=token_keyboard,
+                    text="Окей, я больше не буду присылать тебе уведомления\n\n "
+                    "Если захочешь снова получать информацию об изменении логистики, "
+                    "то отправь мне токен заново"
                 )
-            elif len(sellers_dict) == 1:
-                try:
-                    scheduler.remove_job(*sellers_dict)
-                finally:
-                    await message.answer(
-                        text="Окей, я больше не буду присылать тебе уведомления\n\n "
-                        "Если захочешь снова получать информацию об изменении логистики, "
-                        "то отправь мне токен заново"
-                    )
-            else:
-                await message.answer(
-                    text="У тебя пока нет добавленных токенов, поэтому я не могу присылать тебе уведомления"
-                )
+        else:
+            await message.answer(
+                text="У тебя пока нет добавленных токенов, поэтому я не могу присылать тебе уведомления"
+            )
 
 
 @router.callback_query()
