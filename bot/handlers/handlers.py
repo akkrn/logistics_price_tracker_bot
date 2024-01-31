@@ -148,43 +148,11 @@ async def process_time(callback: CallbackQuery):
         "Сейчас я проверю, будут ли завтра измены коэффициенты на складах.\n\n"
         "Если захочешь отписаться от уведомлений, то напиши мне: Стоп"
     )
-    async with (async_session() as session):
-        async with session.begin():
-            stmt = (
-                select(Seller)
-                .join(Seller.user)
-                .order_by(Seller.added_at.desc())
-                .where(User.user_tg_id == callback.from_user.id)
-            )
-            result = await session.execute(stmt)
-            seller = result.scalars().first()
-            await return_info(seller.id, seller.api_token)
-            try:
-                scheduler.add_job(
-                func=return_info,
-                args=(seller.id, seller.api_token),
-                trigger=CronTrigger(
-                    hour=selected_time.hour,
-                    minute=selected_time.minute,
-                    timezone=moscow_timezone,
-                ),
-                id=str(seller.id),
-                next_run_time=notification_time,
-                )
-            except ConflictingIdError:
-                scheduler.reschedule_job(
-                    str(seller.id),
-                    trigger=CronTrigger(
-                        hour=selected_time.hour,
-                        minute=selected_time.minute,
-                        timezone=moscow_timezone,
-                    ),
-                next_run_time=notification_time,
-                )
     async with async_session() as session:
         stmt = (
             select(Seller)
             .join(Seller.user)
+            .order_by(func.coalesce(Seller.updated_at, Seller.added_at).desc())
             .where(User.user_tg_id == callback.from_user.id)
         )
         result = await session.execute(stmt)
