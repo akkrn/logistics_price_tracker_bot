@@ -2,7 +2,6 @@ version: '3'
 
 volumes:
   pg_data:
-  redis_data:
 services:
   db:
     image: postgres:13
@@ -13,15 +12,11 @@ services:
       POSTGRES_PASSWORD: passwordhere
       POSTGRES_DB: tg_bot_db
     container_name: database
-#  redis:
-#    image: redis:7-alpine
-#    ports:
-#      - "6379:6379"
-#    volumes:
-#      - redis_data:/var/lib/redis/data
   bot:
     build:
       context: .
+    volumes:
+      - .:/app
     command: bash -c "alembic upgrade head && python bot/bot.py"
     restart: always
     env_file:
