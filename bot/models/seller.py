@@ -23,6 +23,8 @@ class Seller(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     api_token: Mapped[str] = mapped_column(String(450))
     added_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP)
+    updated_at: Mapped[datetime.datetime | None] = mapped_column(TIMESTAMP)
+
     __table_args__ = (
         UniqueConstraint("api_token", "user_id", name="user_token_key"),
     )
