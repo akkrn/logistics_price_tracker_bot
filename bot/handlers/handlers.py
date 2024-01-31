@@ -12,7 +12,6 @@ from jwt import DecodeError
 from loader import wb_tariffs_db, scheduler, bot, db, async_session
 from logistics_info_processor import LogisticsInfoProcessor
 from sqlalchemy import select, text
-from sqlalchemy.orm import sessionmaker, joinedload
 from utils import split_message
 from wb_data_extractor import WBDataExtractor
 from wb_parser import WBParser
@@ -65,7 +64,7 @@ async def return_info(seller_id: int, api_token: str):
             async with session.begin():
                 result = await session.execute(
                     select(User)
-                    .options(joinedload(User.sellers))
+                    .join(User.sellers)
                     .where(Seller.id == seller_id)
                 )
                 user_tg_id = result.scalars().first().user_tg_id
@@ -160,7 +159,7 @@ async def process_time(callback: CallbackQuery):
         async with session.begin():
             stmt = (
                 select(Seller)
-                .options(joinedload(Seller.user))
+                .join(Seller.user)
                 .order_by(Seller.added_at.desc())
                 .where(User.user_tg_id == callback.from_user.id)
             )
@@ -197,7 +196,7 @@ async def process_remove_notifications(message: Message):
         async with session.begin():
             stmt = (
                 select(Seller)
-                .options(joinedload(Seller.user))
+                .join(Seller.user)
                 .where(User.user_tg_id == message.from_user.id)
             )
             result = await session.execute(stmt)
