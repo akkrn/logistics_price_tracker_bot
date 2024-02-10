@@ -208,6 +208,8 @@ async def process_remove_notifications(message: Message):
         for seller in sellers:
             if str(seller.id) in jobs_id:
                 sellers_dict[str(seller.id)] = datetime.datetime.strftime(
+                    seller.updated_at, "%d.%m.%Y %H:%M"
+                ) if seller.updated_at else datetime.datetime.strftime(
                     seller.added_at, "%d.%m.%Y %H:%M"
                 )
         if len(sellers_dict) > 1:
