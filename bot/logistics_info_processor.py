@@ -5,7 +5,7 @@ from bot import logger
 from database import Database
 from wb_data_extractor import WBDataExtractor
 
-BASE_VOLUME = 2
+BASE_VOLUME = 1
 
 
 class LogisticsInfoProcessor:
