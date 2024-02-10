@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import time
 
@@ -158,7 +159,7 @@ async def process_time(callback: CallbackQuery):
         )
         result = await session.execute(stmt)
         seller = result.scalars().first()
-        await return_info(seller.id, seller.api_token)
+        await asyncio.sleep(5)
         result = await return_info(seller.id, seller.api_token)
         if not result:
             await callback.message.answer(
