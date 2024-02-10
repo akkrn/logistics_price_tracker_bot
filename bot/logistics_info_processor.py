@@ -1,7 +1,7 @@
 import datetime
+import logging
 from typing import Any
 
-from bot import logger
 from database import Database
 from wb_data_extractor import WBDataExtractor
 
@@ -31,7 +31,7 @@ class LogisticsInfoProcessor:
         try:
             await self._db.insert_data("stocks", stocks_data)
         except Exception:
-            logger.error("Не получилось записать данные в бд", exc_info=True)
+            logging.error("Не получилось записать данные в бд", exc_info=True)
         for stock in stocks_data:
             if stock.get("quantity"):
                 stocks_list.append(
