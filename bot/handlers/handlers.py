@@ -62,9 +62,7 @@ async def return_info(seller_id: int, api_token: str) -> str | None:
     if result_info:
         async with async_session() as session:
             result = await session.execute(
-                select(User)
-                .join(User.sellers)
-                .where(Seller.id == seller_id)
+                select(User).join(User.sellers).where(Seller.id == seller_id)
             )
             user_tg_id = result.scalars().first().user_tg_id
         chunked_message = split_message(result_info)
@@ -110,16 +108,21 @@ async def process_api_token(message: Message):
         if not wb_token_check.is_expired():
             async with async_session() as session:
                 user = await session.execute(
-                    select(User).where(
-                        User.user_tg_id == message.from_user.id
-                    )
+                    select(User).where(User.user_tg_id == message.from_user.id)
                 )
                 user = user.scalar_one()
-                stmt = insert(Seller).values(
-                    user_id=user.id,
-                    api_token=api_token,
-                    added_at=datetime.datetime.now(),
-                ).on_conflict_do_update(constraint="user_token_key", set_={"updated_at": datetime.datetime.now()})
+                stmt = (
+                    insert(Seller)
+                    .values(
+                        user_id=user.id,
+                        api_token=api_token,
+                        added_at=datetime.datetime.now(),
+                    )
+                    .on_conflict_do_update(
+                        constraint="user_token_key",
+                        set_={"updated_at": datetime.datetime.now()},
+                    )
+                )
                 await session.execute(stmt)
                 await session.commit()
             time_keyboard = create_inline_kb(4, *TIME_LIST)
@@ -167,15 +170,15 @@ async def process_time(callback: CallbackQuery):
             )
         try:
             scheduler.add_job(
-            func=return_info,
-            args=(seller.id, seller.api_token),
-            trigger=CronTrigger(
-                hour=selected_time.hour,
-                minute=selected_time.minute,
-                timezone=moscow_timezone,
-            ),
-            id=str(seller.id),
-            next_run_time=notification_time,
+                func=return_info,
+                args=(seller.id, seller.api_token),
+                trigger=CronTrigger(
+                    hour=selected_time.hour,
+                    minute=selected_time.minute,
+                    timezone=moscow_timezone,
+                ),
+                id=str(seller.id),
+                next_run_time=notification_time,
             )
         except ConflictingIdError:
             scheduler.reschedule_job(
@@ -185,7 +188,7 @@ async def process_time(callback: CallbackQuery):
                     minute=selected_time.minute,
                     timezone=moscow_timezone,
                 ),
-            next_run_time=notification_time,
+                next_run_time=notification_time,
             )
 
 

@@ -56,7 +56,9 @@ class LogisticsInfoProcessor:
         """
         Проверка изменения тарифов и возврат списка с названиями складов
         """
-        tariffs = await self.get_tariffs(datetime.date.today()+datetime.timedelta(days=1))
+        tariffs = await self.get_tariffs(
+            datetime.date.today() + datetime.timedelta(days=1)
+        )
         warehouses_data = []
         for tariff in tariffs:
             if tariff.get("box_delivery_and_storage_diff_sign"):
@@ -130,7 +132,9 @@ class LogisticsInfoProcessor:
         Возврат информации об изменении тарифов
         """
         todays_tariffs = await self.get_tariffs()
-        tomorrows_tariffs = await self.get_tariffs(datetime.date.today()+datetime.timedelta(days=1))
+        tomorrows_tariffs = await self.get_tariffs(
+            datetime.date.today() + datetime.timedelta(days=1)
+        )
         if await self.check_changes():
             relevant_products = await self.get_relevant_products()
             if relevant_products:
@@ -147,9 +151,7 @@ class LogisticsInfoProcessor:
                     ) / 1000
 
                     url = f"https://www.wildberries.ru/catalog/{nm_id}/detail.aspx"
-                    message += (
-                        f"{index + 1}. [{product_title} ({vendor_code})]({url})\n"
-                    )
+                    message += f"{index + 1}. [{product_title} ({vendor_code})]({url})\n"
 
                     warehouse_name = product.get("warehouse_name")
                     for warehouse in warehouse_name:
@@ -166,17 +168,21 @@ class LogisticsInfoProcessor:
                         logistics_cost = []
                         for tariff in (todays_tariff, tomorrows_tariff):
                             warehouse_coefficient = (
-                                float(tariff.get("box_delivery_and_storage_expr"))
+                                float(
+                                    tariff.get("box_delivery_and_storage_expr")
+                                )
                                 / 100
                             )
                             base_rate = float(tariff.get("box_delivery_base"))
-                            litter_rate = float(tariff.get("box_delivery_liter"))
+                            litter_rate = float(
+                                tariff.get("box_delivery_liter")
+                            )
                             logistics = round(
-                            await self.calculete_logistics(
-                                volume,
-                                warehouse_coefficient,
-                                base_rate,
-                                litter_rate,
+                                await self.calculete_logistics(
+                                    volume,
+                                    warehouse_coefficient,
+                                    base_rate,
+                                    litter_rate,
                                 ),
                                 2,
                             )

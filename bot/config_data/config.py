@@ -16,6 +16,7 @@ class DatabaseConfig:
 class TgBot:
     token: str
 
+
 @dataclass
 class Sentry:
     url: str

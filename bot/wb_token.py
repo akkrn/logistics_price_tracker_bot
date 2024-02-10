@@ -23,18 +23,18 @@ class WildberriesToken:
     def __init__(self, token: str):
         self.__token = token
         self.__data = jwt.decode(token, options={"verify_signature": False})
-        if 'acsessID' in self.__data:
-            raise WildberriesOldTokenTypeException('Old token type')
-        self.id = self.__data['id']
-        self.expires_at = datetime.datetime.fromtimestamp(self.__data['exp'])
-        self.supplier_id = self.__data['sid']
-        self.issued_by = self.__data['iid']
-        self.user_id = self.__data['uid']
+        if "acsessID" in self.__data:
+            raise WildberriesOldTokenTypeException("Old token type")
+        self.id = self.__data["id"]
+        self.expires_at = datetime.datetime.fromtimestamp(self.__data["exp"])
+        self.supplier_id = self.__data["sid"]
+        self.issued_by = self.__data["iid"]
+        self.user_id = self.__data["uid"]
         self.__init_scope()
 
     def __init_scope(self):
         self.scopes = []
-        s = self.__data['s']
+        s = self.__data["s"]
         for i in range(30):
             if s & 1:
                 self.scopes.append(WildberriesTokenScope(i))
