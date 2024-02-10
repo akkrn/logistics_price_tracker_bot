@@ -50,7 +50,7 @@ async def delete_warning(message: Message, text: str):
     await bot_message.delete()
 
 
-async def return_info(seller_id: int, api_token: str):
+async def return_info(seller_id: int, api_token: str) -> str | None:
     wb_parser = WBParser(api_token)
     wb_data_extractor = WBDataExtractor(wb_parser, db, seller_id)
     await wb_data_extractor.insert_products()
@@ -70,6 +70,7 @@ async def return_info(seller_id: int, api_token: str):
         for chunk in chunked_message:
             await bot.send_message(user_tg_id, chunk)
     await wb_parser.client.close()
+    return result_info
 
 
 @router.message(CommandStart())
@@ -144,7 +145,7 @@ async def process_time(callback: CallbackQuery):
     notification_time += datetime.timedelta(days=1)
     await callback.message.edit_text(
         text=f"Спасибо! Теперь я буду присылать тебе изменение стоимости логистики для твоих товаров.\n\n"
-        f"Уведомления будут приходить каждый день в {selected_time.strftime('%H:%M')}\n\n"
+        f"При наличии изменений в тарифах, уведомления будут приходить в {selected_time.strftime('%H:%M')}\n\n"
         "Сейчас я проверю, будут ли завтра измены коэффициенты на складах.\n\n"
         "Если захочешь отписаться от уведомлений, то напиши мне: Стоп"
     )
@@ -158,6 +159,11 @@ async def process_time(callback: CallbackQuery):
         result = await session.execute(stmt)
         seller = result.scalars().first()
         await return_info(seller.id, seller.api_token)
+        result = await return_info(seller.id, seller.api_token)
+        if not result:
+            await callback.message.answer(
+                text="Я все проверил, завтра изменения тарифов не планируются"
+            )
         try:
             scheduler.add_job(
             func=return_info,
