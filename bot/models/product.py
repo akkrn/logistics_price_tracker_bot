@@ -1,10 +1,7 @@
 import datetime
 from typing import TYPE_CHECKING
-from pydantic import json
 from sqlalchemy import (
-    BigInteger,
     ForeignKey,
-    String,
     UniqueConstraint,
     Text,
     JSON,

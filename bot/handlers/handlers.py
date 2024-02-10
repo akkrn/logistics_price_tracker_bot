@@ -7,7 +7,6 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery
 from apscheduler.jobstores.base import ConflictingIdError
 from apscheduler.triggers.cron import CronTrigger
-from asyncpg import UniqueViolationError
 from jwt import DecodeError
 
 from loader import wb_tariffs_db, scheduler, bot, db, async_session
@@ -236,7 +235,7 @@ async def process_remove_notifications(message: Message):
 
 
 @router.callback_query()
-async def process_remove_notifications(callback: CallbackQuery):
+async def process_remove_notification(callback: CallbackQuery):
     seller_id = callback.data
     try:
         scheduler.remove_job(str(seller_id))

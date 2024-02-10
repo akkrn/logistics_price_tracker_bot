@@ -2,7 +2,6 @@ import datetime
 
 from typing import TYPE_CHECKING
 from sqlalchemy import (
-    BigInteger,
     ForeignKey,
     String,
     UniqueConstraint,
