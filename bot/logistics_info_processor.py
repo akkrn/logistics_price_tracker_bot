@@ -56,10 +56,10 @@ class LogisticsInfoProcessor:
         """
         Проверка изменения тарифов и возврат списка с названиями складов
         """
-        tariffs = await self.get_tariffs()
+        tariffs = await self.get_tariffs(datetime.date.today()+datetime.timedelta(days=1))
         warehouses_data = []
         for tariff in tariffs:
-            if tariff.get("box_delivery_and_storage_diff_sign_next"):
+            if tariff.get("box_delivery_and_storage_diff_sign"):
                 warehouses_data.append(tariff.get("warehouse_name"))
         return warehouses_data
 
@@ -129,70 +129,66 @@ class LogisticsInfoProcessor:
         """
         Возврат информации об изменении тарифов
         """
-        tariffs = await self.get_tariffs()
-        relevant_products = await self.get_relevant_products()
-        if relevant_products:
-            message = "Стоимость логистики для следующих товаров завтра изменится:\n\n"
-            for index, product in enumerate(relevant_products):
-                nm_id = product
-                product = relevant_products.get(nm_id)
-                product_title = product.get("title")
-                vendor_code = product.get("vendor_code")
-                volume = (
-                    product.get("length")
-                    * product.get("width")
-                    * product.get("height")
-                ) / 1000
+        todays_tariffs = await self.get_tariffs()
+        tomorrows_tariffs = await self.get_tariffs(datetime.date.today()+datetime.timedelta(days=1))
+        if await self.check_changes():
+            relevant_products = await self.get_relevant_products()
+            if relevant_products:
+                message = "Стоимость логистики для следующих товаров завтра изменится:\n\n"
+                for index, product in enumerate(relevant_products):
+                    nm_id = product
+                    product = relevant_products.get(nm_id)
+                    product_title = product.get("title")
+                    vendor_code = product.get("vendor_code")
+                    volume = (
+                        product.get("length")
+                        * product.get("width")
+                        * product.get("height")
+                    ) / 1000
 
-                url = f"https://www.wildberries.ru/catalog/{nm_id}/detail.aspx"
-                message += (
-                    f"{index + 1}. [{product_title} ({vendor_code})]({url})\n"
-                )
+                    url = f"https://www.wildberries.ru/catalog/{nm_id}/detail.aspx"
+                    message += (
+                        f"{index + 1}. [{product_title} ({vendor_code})]({url})\n"
+                    )
 
-                warehouse_name = product.get("warehouse_name")
-                for warehouse in warehouse_name:
-                    tariff = next(
-                        tariff
-                        for tariff in tariffs
-                        if tariff.get("warehouse_name") == warehouse
-                    )
-                    warehouse_coefficient = (
-                        float(tariff.get("box_delivery_and_storage_expr"))
-                        / 100
-                    )
-                    warehouse_coefficient_next = (
-                        float(tariff.get("box_delivery_and_storage_expr_next"))
-                        / 100
-                    )
-                    base_rate = float(tariff.get("box_delivery_base"))
-                    litter_rate = float(tariff.get("box_delivery_liter"))
-
-                    current_logistics = round(
-                        await self.calculete_logistics(
-                            volume,
-                            warehouse_coefficient,
-                            base_rate,
-                            litter_rate,
-                        ),
-                        2,
-                    )
-                    next_logistics = round(
-                        await self.calculete_logistics(
-                            volume,
-                            warehouse_coefficient_next,
-                            base_rate,
-                            litter_rate,
-                        ),
-                        2,
-                    )
-                    if current_logistics < next_logistics:
-                        message += "- 🔴 "
-                    else:
-                        message += "- 🟢 "
-                    message += f"{warehouse}: {current_logistics}₽ -> {next_logistics}₽\n"
-                message += "\n"
-
-                # message += f"{index+1}. [{vendor_code}]({url}) - Склад: {warehouse_name}: {current_logistics}руб. -> {next_logistics}руб.\n"
+                    warehouse_name = product.get("warehouse_name")
+                    for warehouse in warehouse_name:
+                        todays_tariff = next(
+                            tariff
+                            for tariff in todays_tariffs
+                            if tariff.get("warehouse_name") == warehouse
+                        )
+                        tomorrows_tariff = next(
+                            tariff
+                            for tariff in tomorrows_tariffs
+                            if tariff.get("warehouse_name") == warehouse
+                        )
+                        logistics_cost = []
+                        for tariff in (todays_tariff, tomorrows_tariff):
+                            warehouse_coefficient = (
+                                float(tariff.get("box_delivery_and_storage_expr"))
+                                / 100
+                            )
+                            base_rate = float(tariff.get("box_delivery_base"))
+                            litter_rate = float(tariff.get("box_delivery_liter"))
+                            logistics = round(
+                            await self.calculete_logistics(
+                                volume,
+                                warehouse_coefficient,
+                                base_rate,
+                                litter_rate,
+                                ),
+                                2,
+                            )
+                            logistics_cost.append(logistics)
+                        current_logistics = logistics_cost[0]
+                        next_logistics = logistics_cost[1]
+                        if current_logistics < next_logistics:
+                            message += "- 🔴 "
+                        else:
+                            message += "- 🟢 "
+                        message += f"{warehouse}: {current_logistics}₽ -> {next_logistics}₽\n"
+                    message += "\n"
+                return message
+            message = "Изменения тарифов, которые произойдут завтра, вас не коснутся!"
             return message
-        message = "Завтра изменения тарифов вас не коснутся!"
-        return message
