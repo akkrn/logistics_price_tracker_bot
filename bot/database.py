@@ -31,6 +31,8 @@ class Database:
         conflict_target=None,
         update_fields=None,
     ):
+        if not data:
+            return
         if isinstance(data, dict):
             data = [data]
         if data:
